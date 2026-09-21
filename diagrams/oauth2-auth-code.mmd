@@ -1,0 +1,17 @@
+sequenceDiagram
+    autonumber
+    actor Browser
+    participant App as Next.js
+    participant Auth as Auth Server
+
+    Note over Auth: [INFERENCE] GitHub + Google share this grant role
+    Browser->>App: GET /login/{github|google}
+    App->>App: mint state, nonce, PKCE S256
+    App-->>Browser: 302 + Set-Cookie
+    Browser->>Auth: GET /authorize
+    Auth-->>Browser: 302 /auth/{p}/callback?code&state
+    Browser->>App: GET /auth/{p}/callback
+    Note over App: [FACT] GitHub nonce before token<br/>[FACT] Google nonce in id_token after token
+    App->>Auth: POST /token + code_verifier
+    Auth-->>App: access_token (+ id_token)
+    App-->>Browser: 302 /profile + session

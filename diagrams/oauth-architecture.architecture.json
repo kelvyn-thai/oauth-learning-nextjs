@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "OAuth Learning App — Dual Provider Architecture",
+    "output": "oauth-architecture.html",
+    "quality_profile": "showcase",
+    "viewBox": [1240, 650],
+    "views": [
+      { "id": "github-path", "label": "GitHub path", "focus": ["browser", "routes", "githubHelpers", "githubOAuth", "githubAPI"], "note": "Authorization Code + PKCE against GitHub, then a Bearer-token REST call." },
+      { "id": "google-path", "label": "Google path", "focus": ["browser", "routes", "googleHelpers", "googleOAuth", "googleUserInfo"], "note": "OIDC Authorization Code + PKCE against Google, then a UserInfo call." },
+      { "id": "session-state", "label": "Session state", "focus": ["routes", "sessionHelpers", "cookieStore"], "note": "How the active provider and profile are resolved from cookies alone." }
+    ]
+  },
+  "components": [
+    { "id": "browser", "type": "frontend", "label": "Browser", "sublabel": "end user", "pos": [40, 214], "size": [150, 64] },
+    { "id": "cookieStore", "type": "security", "label": "Session Cookies", "sublabel": "httpOnly, SameSite=Lax", "pos": [40, 562], "size": [150, 64] },
+    { "id": "sessionHelpers", "type": "backend", "label": "lib/session.ts", "sublabel": "active provider + profile", "pos": [360, 40], "size": [150, 64] },
+    { "id": "routes", "type": "backend", "label": "Pages Router Routes", "sublabel": "route handlers (pages/*)", "pos": [360, 214], "size": [150, 64] },
+    { "id": "githubHelpers", "type": "backend", "label": "lib/github.ts", "sublabel": "state · nonce · PKCE · fetch", "pos": [680, 40], "size": [150, 64] },
+    { "id": "googleHelpers", "type": "backend", "label": "lib/google.ts", "sublabel": "authorize + id_token", "pos": [680, 562], "size": [150, 64] },
+    { "id": "githubOAuth", "type": "external", "label": "GitHub OAuth", "sublabel": "authorize + token", "brand": "github", "pos": [1000, 40], "size": [160, 64] },
+    { "id": "githubAPI", "type": "external", "label": "GitHub REST API", "sublabel": "/user, /user/repos", "brand": "github", "pos": [1000, 214], "size": [160, 64] },
+    { "id": "googleOAuth", "type": "external", "label": "Google OAuth", "sublabel": "authorize + OIDC token", "pos": [1000, 388], "size": [160, 64] },
+    { "id": "googleUserInfo", "type": "external", "label": "Google UserInfo", "sublabel": "openid email profile", "pos": [1000, 562], "size": [160, 64] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Next.js Server (Pages Router)", "wraps": ["routes", "sessionHelpers", "githubHelpers", "googleHelpers"], "pad": 18 }
+  ],
+  "connections": [
+    { "id": "browser-to-routes", "from": "browser", "to": "routes", "label": "browser requests" },
+    { "id": "routes-to-cookies", "from": "routes", "to": "cookieStore", "label": "Set-Cookie / Cookie: state, nonce, verifier, tokens", "variant": "security" },
+    { "id": "routes-to-session", "from": "routes", "to": "sessionHelpers", "label": "resolve provider + profile" },
+    { "id": "routes-to-github-helpers", "from": "routes", "to": "githubHelpers", "label": "authorize URL (state+nonce+PKCE)" },
+    { "id": "routes-to-google-helpers", "from": "routes", "to": "googleHelpers", "label": "authorize URL (nonce+PKCE)" },
+    { "id": "github-helpers-to-oauth", "from": "githubHelpers", "to": "githubOAuth", "label": "authorize + token", "variant": "emphasis" },
+    { "id": "github-helpers-to-api", "from": "githubHelpers", "to": "githubAPI", "label": "GET user, repos (Bearer)" },
+    { "id": "google-helpers-to-oauth", "from": "googleHelpers", "to": "googleOAuth", "label": "authorize + token", "variant": "emphasis", "fromSide": "top", "toSide": "left" },
+    { "id": "google-helpers-to-userinfo", "from": "googleHelpers", "to": "googleUserInfo", "label": "GET userinfo (Bearer)" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Dual-Provider OAuth", "items": ["GitHub: Authorization Code + PKCE", "Google: Authorization Code + PKCE + OIDC", "Only one provider's tokens are live at a time"] },
+    { "dot": "rose", "title": "Security Controls", "items": ["state bound to an httpOnly cookie (CSRF check)", "PKCE verifier stays server-side, never shared", "GitHub nonce is folded into state (state.nonce)"] },
+    { "dot": "amber", "title": "Review Notes", "items": ["STATE_COOKIE is never cleared after a successful login", "Tokens sit in plain cookies, not a signed session", "console.log leaks raw tokens in the Google callback"] }
+  ]
+}

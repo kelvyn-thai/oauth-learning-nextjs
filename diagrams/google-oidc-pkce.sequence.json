@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Google Login — OIDC Authorization Code + PKCE",
+    "output": "google-oidc-pkce.html",
+    "viewBox": [1080, 575],
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "redirect", "label": "Authorize redirect", "focus": ["user", "app", "cookieJar"], "note": "state and nonce are minted separately — Google gets both as distinct params, unlike GitHub." },
+      { "id": "callback", "label": "Google callback", "focus": ["user", "google", "app"], "note": "Google redirects back with code and state." },
+      { "id": "exchange", "label": "Token exchange + nonce check", "focus": ["app", "google", "cookieJar"], "note": "The id_token's nonce claim must match the cookie before the session is trusted." }
+    ]
+  },
+  "participants": [
+    { "id": "user", "type": "external", "label": "Browser", "sublabel": "end user" },
+    { "id": "app", "type": "backend", "label": "Server", "sublabel": "Next.js" },
+    { "id": "cookieJar", "type": "security", "label": "Cookies", "sublabel": "httpOnly" },
+    { "id": "google", "type": "external", "label": "Google", "sublabel": "OAuth + OIDC" }
+  ],
+  "messages": [
+    { "id": "start-login", "from": "user", "to": "app", "y": 160, "label": "GET /login/google", "variant": "default" },
+    { "id": "mint-cookies", "from": "app", "to": "cookieJar", "y": 188, "label": "Set-Cookie: state, nonce, code_verifier", "variant": "security", "note": "nonce is sent to Google as its own param, not folded into state" },
+    { "id": "redirect-to-google", "from": "app", "to": "user", "y": 216, "label": "302 -> Google authorize URL", "variant": "return" },
+    { "id": "authorize-request", "from": "user", "to": "google", "y": 244, "label": "GET /o/oauth2/v2/auth?state&nonce&code_challenge=S256", "variant": "emphasis" },
+    { "id": "google-approves", "from": "google", "to": "user", "y": 272, "label": "302 -> /auth/google/callback?code&state", "variant": "return" },
+    { "id": "callback-hit", "from": "user", "to": "app", "y": 300, "label": "GET /auth/google/callback?code&state", "variant": "emphasis" },
+    { "id": "read-cookies", "from": "app", "to": "cookieJar", "y": 328, "label": "read state, nonce, code_verifier", "note": "compare cookie vs query state (CSRF)" },
+    { "id": "cookies-returned", "from": "cookieJar", "to": "app", "y": 356, "label": "cookie values", "variant": "return" },
+    { "id": "token-exchange", "from": "app", "to": "google", "y": 384, "label": "POST /oauth2/v4/token (code, code_verifier, client_secret)", "variant": "emphasis" },
+    { "id": "token-returned", "from": "google", "to": "app", "y": 412, "label": "access_token + id_token", "variant": "return" },
+    { "id": "set-session-cookie", "from": "app", "to": "cookieJar", "y": 440, "label": "Set-Cookie: google_access_token, google_user_id, google_email", "variant": "security", "note": "requires idToken.sub + nonce match" },
+    { "id": "redirect-profile", "from": "app", "to": "user", "y": 468, "label": "302 -> /profile", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "app", "from": 154, "to": 483, "type": "backend" },
+    { "participant": "google", "from": 238, "to": 276, "type": "external" },
+    { "participant": "google", "from": 378, "to": 416, "type": "external" },
+    { "participant": "cookieJar", "from": 182, "to": 198, "type": "security" },
+    { "participant": "cookieJar", "from": 322, "to": 360, "type": "security" },
+    { "participant": "cookieJar", "from": 434, "to": 450, "type": "security" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "OIDC PKCE", "items": ["Same PKCE S256 mechanics as GitHub", "scope=openid email profile requests a real id_token"] },
+    { "dot": "rose", "title": "Real Nonce Verification", "items": ["nonce is its own param, separate from state", "id_token's nonce claim is checked after token exchange", "Google signs the id_token — this nonce check is real"] },
+    { "dot": "amber", "title": "Review Notes", "items": ["STATE_COOKIE is never cleared, same gap as GitHub", "console.log leaks raw token/id_token claims", "id_token signature itself is never verified"] }
+  ]
+}

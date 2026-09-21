@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "GitHub Login — Authorization Code + PKCE",
+    "output": "github-oauth-pkce.html",
+    "viewBox": [1080, 575],
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "redirect", "label": "Authorize redirect", "focus": ["user", "app", "cookieJar"], "note": "The server mints state, a folded nonce, and a PKCE pair before sending the browser to GitHub." },
+      { "id": "callback", "label": "GitHub callback", "focus": ["user", "github", "app"], "note": "GitHub redirects back with code and the untouched state param." },
+      { "id": "exchange", "label": "Code exchange", "focus": ["app", "github", "cookieJar"], "note": "The server trades the code plus code_verifier for an access token, server to server." }
+    ]
+  },
+  "participants": [
+    { "id": "user", "type": "external", "label": "Browser", "sublabel": "end user" },
+    { "id": "app", "type": "backend", "label": "Server", "sublabel": "Next.js" },
+    { "id": "cookieJar", "type": "security", "label": "Cookies", "sublabel": "httpOnly" },
+    { "id": "github", "type": "external", "label": "GitHub", "sublabel": "OAuth + REST API", "brand": "github" }
+  ],
+  "messages": [
+    { "id": "start-login", "from": "user", "to": "app", "y": 160, "label": "GET /login/github", "variant": "default" },
+    { "id": "mint-cookies", "from": "app", "to": "cookieJar", "y": 188, "label": "Set-Cookie: state, nonce, code_verifier", "variant": "security", "note": "16B state/nonce; 32B PKCE verifier" },
+    { "id": "redirect-to-github", "from": "app", "to": "user", "y": 216, "label": "302 -> GitHub authorize URL", "variant": "return" },
+    { "id": "authorize-request", "from": "user", "to": "github", "y": 244, "label": "GET /authorize?state=state.nonce&code_challenge=S256", "variant": "emphasis" },
+    { "id": "github-approves", "from": "github", "to": "user", "y": 272, "label": "302 -> /auth/github/callback?code&state", "variant": "return" },
+    { "id": "callback-hit", "from": "user", "to": "app", "y": 300, "label": "GET /auth/github/callback?code&state", "variant": "emphasis" },
+    { "id": "read-cookies", "from": "app", "to": "cookieJar", "y": 328, "label": "read state, nonce, code_verifier", "note": "compare cookie vs query state (CSRF)" },
+    { "id": "cookies-returned", "from": "cookieJar", "to": "app", "y": 356, "label": "cookie values", "variant": "return" },
+    { "id": "token-exchange", "from": "app", "to": "github", "y": 384, "label": "POST /login/oauth/access_token (code, code_verifier, client_secret)", "variant": "emphasis" },
+    { "id": "token-returned", "from": "github", "to": "app", "y": 412, "label": "access_token", "variant": "return" },
+    { "id": "set-session-cookie", "from": "app", "to": "cookieJar", "y": 440, "label": "Set-Cookie: access_token; clear nonce + code_verifier", "variant": "security" },
+    { "id": "redirect-profile", "from": "app", "to": "user", "y": 468, "label": "302 -> /profile", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "app", "from": 154, "to": 483, "type": "backend" },
+    { "participant": "github", "from": 238, "to": 276, "type": "external" },
+    { "participant": "github", "from": 378, "to": 416, "type": "external" },
+    { "participant": "cookieJar", "from": 182, "to": 198, "type": "security" },
+    { "participant": "cookieJar", "from": 322, "to": 360, "type": "security" },
+    { "participant": "cookieJar", "from": 434, "to": 450, "type": "security" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "PKCE + State", "items": ["code_verifier never leaves the server as a secret", "A forged callback fails the cookie state check"] },
+    { "dot": "rose", "title": "GitHub-Specific Nonce", "items": ["GitHub is plain OAuth 2.0 — no id_token, no real nonce", "nonce is folded into state as state.nonce", "The separate ?nonce= param is inert; GitHub ignores it"] },
+    { "dot": "amber", "title": "Review Notes", "items": ["STATE_COOKIE is never cleared after success", "access_token sits in a plain cookie, not a signed session"] }
+  ]
+}
