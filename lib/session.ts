@@ -1,3 +1,4 @@
+import type { Session } from "next-auth";
 import {
   GOOGLE_ACCESS_TOKEN_COOKIE,
   GOOGLE_USER_ID_COOKIE,
@@ -5,7 +6,7 @@ import {
 } from "@/lib/google";
 import { ACCESS_TOKEN_COOKIE, apiRequest, apiURLBase } from "@/lib/github";
 
-export type Provider = "github" | "google";
+export type Provider = "github" | "google" | "keycloak";
 
 export type ProfileUser = {
   provider: Provider;
@@ -23,7 +24,10 @@ export type ProfileUser = {
 
 type CookieBag = Partial<Record<string, string>>;
 
-export function getActiveProvider(cookies: CookieBag): Provider | null {
+export function getActiveProvider(
+  cookies: CookieBag,
+  keycloakSession?: Session | null,
+): Provider | null {
   if (cookies[ACCESS_TOKEN_COOKIE]) {
     return "github";
   }
@@ -32,13 +36,18 @@ export function getActiveProvider(cookies: CookieBag): Provider | null {
     return "google";
   }
 
+  if (keycloakSession) {
+    return "keycloak";
+  }
+
   return null;
 }
 
 export async function loadProfile(
   cookies: CookieBag,
+  keycloakSession?: Session | null,
 ): Promise<ProfileUser | null> {
-  const provider = getActiveProvider(cookies);
+  const provider = getActiveProvider(cookies, keycloakSession);
 
   if (provider === "github") {
     return loadGitHubProfile(cookies[ACCESS_TOKEN_COOKIE] as string);
@@ -48,7 +57,29 @@ export async function loadProfile(
     return loadGoogleProfile(cookies[GOOGLE_ACCESS_TOKEN_COOKIE] as string);
   }
 
+  if (provider === "keycloak" && keycloakSession) {
+    return loadKeycloakProfile(keycloakSession);
+  }
+
   return null;
+}
+
+function loadKeycloakProfile(session: Session): ProfileUser {
+  const user = session.user ?? {};
+
+  return {
+    provider: "keycloak",
+    id: session.sub ?? user.email ?? "keycloak-user",
+    name: user.name ?? null,
+    handle: user.email ?? user.name ?? "keycloak-user",
+    email: user.email ?? null,
+    avatarUrl: user.image ?? null,
+    profileUrl: null,
+    bio: null,
+    publicRepos: null,
+    followers: null,
+    following: null,
+  };
 }
 
 async function loadGitHubProfile(accessToken: string): Promise<ProfileUser | null> {

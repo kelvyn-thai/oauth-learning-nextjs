@@ -12,6 +12,11 @@ export default function LoginPage() {
           Google
         </a>
       </p>
+      <p className="mt-2">
+        <a className="underline" href="/api/auth/signin/keycloak?callbackUrl=/profile">
+          Keycloak (Google SSO)
+        </a>
+      </p>
     </main>
   );
 }

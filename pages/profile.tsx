@@ -1,5 +1,7 @@
 import type { GetServerSideProps } from "next";
+import { getServerSession } from "next-auth/next";
 import Link from "next/link";
+import { authOptions } from "@/lib/auth";
 import { loadProfile, type ProfileUser } from "@/lib/session";
 import { useState } from "react";
 
@@ -9,8 +11,10 @@ type ProfileProps = {
 
 export const getServerSideProps: GetServerSideProps<ProfileProps> = async ({
   req,
+  res,
 }) => {
-  const user = await loadProfile(req.cookies);
+  const keycloakSession = await getServerSession(req, res, authOptions);
+  const user = await loadProfile(req.cookies, keycloakSession);
 
   if (!user) {
     return {
@@ -25,7 +29,12 @@ export const getServerSideProps: GetServerSideProps<ProfileProps> = async ({
 };
 
 export default function ProfilePage({ user }: ProfileProps) {
-  const providerLabel = user.provider === "github" ? "GitHub" : "Google";
+  const providerLabel =
+    user.provider === "github"
+      ? "GitHub"
+      : user.provider === "google"
+        ? "Google"
+        : "Keycloak";
   const [count, setCount] = useState(0);
 
   return (

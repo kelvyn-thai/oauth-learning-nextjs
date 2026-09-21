@@ -1,5 +1,7 @@
 import type { GetServerSideProps } from "next";
+import { getServerSession } from "next-auth/next";
 import Link from "next/link";
+import { authOptions } from "@/lib/auth";
 import { getActiveProvider } from "@/lib/session";
 
 type HomeProps = {
@@ -8,10 +10,13 @@ type HomeProps = {
 
 export const getServerSideProps: GetServerSideProps<HomeProps> = async ({
   req,
+  res,
 }) => {
+  const keycloakSession = await getServerSession(req, res, authOptions);
+
   return {
     props: {
-      isLoggedIn: getActiveProvider(req.cookies) !== null,
+      isLoggedIn: getActiveProvider(req.cookies, keycloakSession) !== null,
     },
   };
 };

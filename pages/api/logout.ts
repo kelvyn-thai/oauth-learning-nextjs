@@ -18,6 +18,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     GOOGLE_ACCESS_TOKEN_COOKIE,
     GOOGLE_USER_ID_COOKIE,
     GOOGLE_EMAIL_COOKIE,
+    "next-auth.session-token",
+    "__Secure-next-auth.session-token",
   ]) {
     res.appendHeader(
       "Set-Cookie",
