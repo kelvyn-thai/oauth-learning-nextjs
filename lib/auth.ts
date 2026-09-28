@@ -7,9 +7,6 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.KEYCLOAK_CLIENT_ID ?? "",
       clientSecret: process.env.KEYCLOAK_CLIENT_SECRET ?? "",
       issuer: process.env.KEYCLOAK_URL,
-      authorization: {
-        params: { kc_idp_hint: "google-test" },
-      },
       client: {
         id_token_signed_response_alg: process.env.KEYCLOAK_ALG,
       },

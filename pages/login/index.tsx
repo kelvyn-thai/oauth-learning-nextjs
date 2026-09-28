@@ -1,3 +1,5 @@
+import { signIn } from "next-auth/react";
+
 export default function LoginPage() {
   return (
     <main className="p-8 font-sans">
@@ -13,9 +15,32 @@ export default function LoginPage() {
         </a>
       </p>
       <p className="mt-2">
-        <a className="underline" href="/api/auth/signin/keycloak?callbackUrl=/profile">
+        <button
+          className="underline"
+          onClick={() =>
+            signIn(
+              "keycloak",
+              { callbackUrl: "/profile" },
+              { kc_idp_hint: "google-test" },
+            )
+          }
+        >
           Keycloak (Google SSO)
-        </a>
+        </button>
+      </p>
+      <p className="mt-2">
+        <button
+          className="underline"
+          onClick={() =>
+            signIn(
+              "keycloak",
+              { callbackUrl: "/profile" },
+              { kc_idp_hint: "saml-test" },
+            )
+          }
+        >
+          Keycloak (SAML test)
+        </button>
       </p>
     </main>
   );
