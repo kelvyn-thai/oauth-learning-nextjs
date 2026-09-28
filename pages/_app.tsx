@@ -2,6 +2,8 @@ import type { AppProps } from "next/app";
 import { Geist, Geist_Mono } from "next/font/google";
 import Head from "next/head";
 import "@/styles/globals.css";
+import { SessionProvider } from "next-auth/react"
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +15,9 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export default function App({ Component, pageProps }: AppProps) {
+export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return (
+    <SessionProvider session={session}>
     <div
       className={`${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col`}
     >
@@ -27,5 +30,6 @@ export default function App({ Component, pageProps }: AppProps) {
       </Head>
       <Component {...pageProps} />
     </div>
-  );
+    </SessionProvider>
+    );
 }

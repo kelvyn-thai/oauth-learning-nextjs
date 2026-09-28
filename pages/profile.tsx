@@ -1,49 +1,95 @@
-import type { GetServerSideProps } from "next";
-import { getServerSession } from "next-auth/next";
+"use client";
+
 import Link from "next/link";
-import { authOptions } from "@/lib/auth";
-import { loadProfile, type ProfileUser } from "@/lib/session";
-import { useState } from "react";
+import { useSession, signIn, signOut } from "next-auth/react"
+import { useEffect, useState } from "react";
+import type { ProfileUser } from "@/lib/session";
 
-type ProfileProps = {
-  user: ProfileUser;
-};
+export default function ProfilePage() {
+  const { data: session, status } = useSession()
+  console.log(session, status)
+  const [user, setUser] = useState<ProfileUser | null>(null);
+  const [error, setError] = useState<"unauthenticated" | "failed" | null>(null);
 
-export const getServerSideProps: GetServerSideProps<ProfileProps> = async ({
-  req,
-  res,
-}) => {
-  const keycloakSession = await getServerSession(req, res, authOptions);
-  const user = await loadProfile(req.cookies, keycloakSession);
+  useEffect(() => {
+    let cancelled = false;
 
-  if (!user) {
-    return {
-      redirect: {
-        destination: "/",
-        permanent: false,
-      },
+    async function loadUser() {
+      try {
+        const response = await fetch("/api/profile");
+
+        if (response.status === 401) {
+          if (!cancelled) {
+            setError("unauthenticated");
+          }
+          return;
+        }
+
+        if (!response.ok) {
+          if (!cancelled) {
+            setError("failed");
+          }
+          return;
+        }
+
+        const data = (await response.json()) as ProfileUser;
+
+        if (!cancelled) {
+          setUser(data);
+        }
+      } catch {
+        if (!cancelled) {
+          setError("failed");
+        }
+      }
+    }
+
+    void loadUser();
+
+    return () => {
+      cancelled = true;
     };
+  }, []);
+
+  if (error === "unauthenticated") {
+    return (
+      <main className="p-8 font-sans">
+        <p>Not logged in.</p>
+        <p className="mt-2">
+          <a className="underline" href="/login">
+            Log In
+          </a>
+        </p>
+      </main>
+    );
   }
 
-  return { props: { user } };
-};
+  if (error === "failed") {
+    return (
+      <main className="p-8 font-sans">
+        <p>Failed to load profile.</p>
+      </main>
+    );
+  }
 
-export default function ProfilePage({ user }: ProfileProps) {
+  if (user === null) {
+    return (
+      <main className="p-8 font-sans">
+        <p>Loading...</p>
+      </main>
+    );
+  }
+
   const providerLabel =
     user.provider === "github"
       ? "GitHub"
       : user.provider === "google"
         ? "Google"
         : "Keycloak";
-  const [count, setCount] = useState(0);
 
   return (
     <main className="p-8 font-sans">
       <h3 className="text-xl font-semibold">Profile</h3>
-      {count}
-      <button onClick={() => setCount((prevCount) => prevCount + 1)}>
-        Click
-      </button>
       <p className="mt-1">Signed in with {providerLabel}</p>
       <div className="mt-4 flex gap-4">
         {user.avatarUrl ? (
